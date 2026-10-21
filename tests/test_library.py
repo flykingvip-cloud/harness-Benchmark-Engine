@@ -370,6 +370,7 @@ def test_model_library_admits_through_the_same_gates(
 
     scanned = client.post("/v1/model-library/scan", json={"target": "local", "host": "", "port": None})
     assert scanned.json()["admitted"] == ["ollama/qwen2.5"]
+    assert scanned.json()["missing"] == ["ollama/llama3"]
     local = (tmp_path / "models" / "catalog" / "ollama__qwen2.5.yaml").read_text(encoding="utf-8")
     assert "placement: local" in text or "placement: local" in local
     assert "placement: local" in local
@@ -377,6 +378,71 @@ def test_model_library_admits_through_the_same_gates(
     assert {item["model_id"] for item in listed["entries"]} == {"vllm/lab", "ollama/qwen2.5"}
     both = {item["model_id"] for item in client.get("/v1/catalog/models").json()["models"]}
     assert both == {"vllm/lab", "ollama/qwen2.5"}
+
+
+def test_cloud_admit_takes_revision_from_the_gateway_listing(tmp_path: Path) -> None:
+    class _TaggedProbe:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def get_json(self, url: str, *, timeout: float = 2.0, bearer: str | None = None) -> tuple[int, dict[str, object]]:
+            del timeout, bearer
+            self.calls.append(url)
+            return 200, {"data": [{"id": "qwen2.5:7b"}]}
+
+    probe = _TaggedProbe()
+    client = _client(tmp_path, probe=probe)
+    secret = "sk-library-secret"
+    derived = client.post(
+        "/v1/model-library/admit",
+        json={
+            "target": "local",
+            "host": "",
+            "port": None,
+            "model_id": "vllm/qwen2.5",
+            "provider": "vllm",
+            "name": "qwen2.5",
+            "revision": "",
+            "litellm_model": "hosted_vllm/qwen2.5",
+            "modality": "text",
+            "strengths": ["reasoning"],
+            "placement": "gateway",
+            "api_key": secret,
+            "gateway_url": "http://ohbe-gateway:4000",
+        },
+    )
+    assert derived.json()["ok"] is True
+    assert derived.json()["reason"] == "admitted"
+    assert derived.json()["version"] == "7b"
+    assert probe.calls == ["http://ohbe-gateway:4000/v1/models"]
+    text = (tmp_path / "models" / "catalog" / "vllm__qwen2.5.yaml").read_text(encoding="utf-8")
+    assert 'revision: "7b"' in text
+    assert "latest" not in text
+    assert secret not in text
+
+    empty = _ListingProbe()
+    bare = _client(tmp_path / "bare", probe=empty)
+    rejected = bare.post(
+        "/v1/model-library/admit",
+        json={
+            "target": "local",
+            "host": "",
+            "port": None,
+            "model_id": "vllm/qwen2.5",
+            "provider": "vllm",
+            "name": "qwen2.5",
+            "litellm_model": "hosted_vllm/qwen2.5",
+            "modality": "text",
+            "strengths": ["reasoning"],
+            "placement": "gateway",
+            "api_key": secret,
+            "gateway_url": "http://ohbe-gateway:4000",
+        },
+    )
+    assert rejected.json()["reason"] == "version_rejected"
+    assert rejected.json()["admitted"] == []
+    assert empty.calls == ["http://ohbe-gateway:4000/v1/models"]
+    assert not (tmp_path / "bare" / "models" / "catalog").exists()
 
 
 def test_catalog_pin_and_release_lookup_never_emit_latest(monkeypatch: pytest.MonkeyPatch) -> None:

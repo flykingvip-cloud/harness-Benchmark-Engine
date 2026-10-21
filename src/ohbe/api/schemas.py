@@ -730,8 +730,13 @@ class ModelAdmitRequest(CatalogEntryRequest):
 
     The server stores ``placement: gateway``. ``api_key`` is used for the
     connectivity probe and is not written into pool or catalog YAML.
+
+    ``revision`` may be empty. A concrete value is kept. An empty value is
+    taken from the gateway ``GET /v1/models`` listing after the probe. A
+    floating tag such as ``latest`` is still rejected before any socket.
     """
 
+    revision: str = Field(default="", max_length=200)
     target: Literal["local", "remote"]
     host: str = ""
     port: int | None = None

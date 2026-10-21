@@ -184,7 +184,7 @@ def admit_model(
     gated = _gated(body, environ)
     if gated is not None:
         return gated
-    if not gates.revision_admitted(body.revision):
+    if body.revision and not gates.revision_admitted(body.revision):
         return _result(
             environ,
             ok=False,
@@ -196,12 +196,14 @@ def admit_model(
     issues = cloud_gateway_issues(
         provider=body.provider,
         name=body.name,
-        revision=body.revision,
+        revision=body.revision or "from-listing",
         model_id=body.model_id,
         litellm_model=body.litellm_model,
         api_key=body.api_key,
         gateway_url=body.gateway_url,
     )
+    if not body.revision:
+        issues = [item for item in issues if item != "revision"]
     if issues:
         return _result(
             environ,
@@ -231,13 +233,26 @@ def admit_model(
             reachable=True if body.target == "remote" else None,
             reason="connectivity_failed",
         )
+    revision = body.revision
+    if not revision:
+        derived = gates.listed_revision(service.listing_body(), body.name)
+        if derived is None:
+            return _result(
+                environ,
+                ok=False,
+                network=network if network in {"not_contacted", "probed"} else "probed",
+                target=body.target,
+                reachable=True if body.target == "remote" else None,
+                reason="version_rejected",
+            )
+        revision = derived
     saved = save_catalog_entry(
         root,
         CatalogEntryRequest(
             model_id=body.model_id,
             provider=body.provider,
             name=body.name,
-            revision=body.revision,
+            revision=revision,
             litellm_model=body.litellm_model,
             modality=body.modality,
             strengths=list(body.strengths),
@@ -266,7 +281,7 @@ def admit_model(
         reason="admitted",
         admitted=[saved.model_id],
         source=saved.source,
-        version=body.revision,
+        version=revision,
     )
 
 
@@ -320,13 +335,17 @@ def scan_models(
             reason=reason,
         )
     admitted: list[str] = []
+    skipped: list[str] = []
     for model in found:
-        if model.provider not in {"vllm", "ollama"} or not gates.revision_admitted(model.revision):
+        if model.provider not in {"vllm", "ollama"}:
             continue
         prefix = "hosted_vllm/" if model.provider == "vllm" else "ollama/"
         model_id = f"{model.provider}/{model.name}"
         litellm_model = f"{prefix}{model.name}"
         if wanted is not None and model_id != wanted:
+            continue
+        if not gates.revision_admitted(model.revision):
+            skipped.append(model_id)
             continue
         if local_identity_issues(
             provider=model.provider,
@@ -369,6 +388,7 @@ def scan_models(
         reachable=True if body.target == "remote" else None,
         reason="admitted" if admitted else "empty",
         admitted=admitted,
+        missing=skipped,
     )
 
 

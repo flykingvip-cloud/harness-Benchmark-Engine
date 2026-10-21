@@ -26,6 +26,7 @@ import {
   targetReady,
   cloudAddIssues,
   localAddIssues,
+  localScanBody,
   localIdentity,
   localVllmIssues,
   poolDraftIssues,
@@ -197,9 +198,25 @@ test("local and cloud add actions require the intake triad", () => {
   const cloud = { ...local, provider: "vllm" as const, name: "lab", apiKey: "sk-intake-secret", gatewayUrl: "http://ohbe-gateway:4000" };
   assert.deepEqual(cloudAddIssues(cloud), []);
   assert.equal(localIdentity(cloud).litellm_model, "hosted_vllm/lab");
+  assert.deepEqual(cloudAddIssues({ ...cloud, revision: "" }), []);
+  assert.ok(cloudAddIssues({ ...cloud, revision: "latest" }).includes("revision"));
   assert.ok(cloudAddIssues({ ...cloud, apiKey: "short" }).includes("api_key"));
   assert.ok(cloudAddIssues({ ...cloud, gatewayUrl: "http://user:pw@ohbe-gateway:4000" }).includes("gateway_url"));
   assert.ok(cloudAddIssues({ ...cloud, gatewayUrl: "" }).includes("gateway_url"));
+});
+
+test("local discovery scan does not send a pre-filled identity", () => {
+  const body = localScanBody({ baseUrl: " http://127.0.0.1:8001 ", apiKey: "" });
+  assert.deepEqual(body, {
+    target: "local",
+    host: "",
+    port: null,
+    vllm_base_url: "http://127.0.0.1:8001",
+    api_key: "",
+  });
+  for (const key of ["provider", "name", "revision", "model_id", "litellm_model"]) {
+    assert.equal(Object.hasOwn(body, key), false, key);
+  }
 });
 
 test("local vllm discovery fields stay optional and reject a provider host", () => {

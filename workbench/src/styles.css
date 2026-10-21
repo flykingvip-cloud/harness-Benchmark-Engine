@@ -634,6 +634,39 @@ tbody tr:hover td {
   gap: 10px;
 }
 
+.advanced,
+.explain {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.advanced summary,
+.explain summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.advanced .form-grid,
+.explain p {
+  margin-top: 8px;
+}
+
+.explain p {
+  margin-bottom: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.scan-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .seg {
   display: inline-flex;
   gap: 6px;

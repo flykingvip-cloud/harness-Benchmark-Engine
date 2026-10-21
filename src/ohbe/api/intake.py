@@ -520,6 +520,11 @@ class IntakeService:
         self.slots: list[str] = []
         self._last_body: Mapping[str, Any] = {}
 
+    def listing_body(self) -> Mapping[str, Any]:
+        """JSON from the most recent connectivity probe, or an empty mapping."""
+
+        return self._last_body
+
     def hydrate(self, root: Path) -> None:
         """Load valid catalog files into this process. Does not probe or spend."""
 
