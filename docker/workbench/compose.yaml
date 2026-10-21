@@ -1,0 +1,99 @@
+# Private-host workbench for Linux. Two containers, no live spend.
+#
+#   ui   nginx serves the built React app on 127.0.0.1:8080
+#   api  uvicorn ohbe.api.app:app on 127.0.0.1:8765
+#
+# Both use the host network and bind loopback only. A Docker bridge is not
+# used: on hosts whose iptables FORWARD policy is DROP, same-bridge packets
+# never arrive, so the page would not reach the API. This file does not
+# insert an iptables rule. Loopback does not need one.
+#
+# Mac and Windows Docker Desktop cannot use this host-network file: host
+# network does not reach the Mac loopback. Use
+# docker/workbench/compose.desktop.yaml (`make workbench-desktop-up`).
+#
+# Defaults:
+#   - nothing listens on 0.0.0.0
+#   - the browser uses http://127.0.0.1:8080; nginx proxies /v1 and /health
+#     to 127.0.0.1:8765 on the same machine
+#   - OHBE_ALLOW_LIVE_SPEND is empty (only the exact value 1 unlocks the
+#     flag, and this file does not set it)
+#   - models/ and harnesses/ are mounted read-write so catalog, pool, and
+#     harness profile YAML can be saved. The image root stays read-only.
+#     LITELLM_BASE_URL and LITELLM_API_KEY come from the host environment.
+#     Do not write key values into this file. Do not add OPENAI_API_KEY or
+#     ANTHROPIC_API_KEY.
+#
+# The processes can use the host's network stack. They still do not call a
+# model: this stack does not run `benchmark run`, and the API surface does
+# not place a model call. The offline preflight is `make doctor` on the
+# host, not a service in this file.
+#
+# From the repository root:
+#   docker compose -f docker/workbench/compose.yaml up --build -d
+#   curl -fsS http://127.0.0.1:8080/v1/status
+
+name: ohbe-workbench
+
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: docker/workbench/Dockerfile.api
+    image: ohbe-workbench-api:local
+    network_mode: host
+    environment:
+      OHBE_ROOT: /opt/ohbe
+      PYTHONDONTWRITEBYTECODE: "1"
+      OHBE_ALLOW_LIVE_SPEND: ""
+      # Plans whitelist pins for the fixture live pair. The API image does not
+      # install OpenBot or Inspect; HostHarnessDetector reads these env pins
+      # so openbot/inspect-react enter plans without expanding HARNESS_ORDER
+      # and without unlocking spend. Override at runtime if needed.
+      OHBE_HARNESS_OPENBOT_VERSION: "${OHBE_HARNESS_OPENBOT_VERSION:-fixture}"
+      OHBE_HARNESS_INSPECT_REACT_VERSION: "${OHBE_HARNESS_INSPECT_REACT_VERSION:-0.3.277}"
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+    volumes:
+      - ../../models:/opt/ohbe/models:rw
+      - ../../harnesses:/opt/ohbe/harnesses:rw
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  ui:
+    build:
+      context: ../..
+      dockerfile: docker/workbench/Dockerfile.ui
+    image: ohbe-workbench-ui:local
+    network_mode: host
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

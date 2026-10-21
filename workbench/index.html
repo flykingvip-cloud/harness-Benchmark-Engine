@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OHBE Workbench</title>
+    <!-- Storage key matches LOCALE_STORAGE_KEY in src/i18n/locale.ts -->
+    <script>
+      (function () {
+        var key = "ohbe.workbench.locale";
+        var stored = null;
+        try {
+          stored = localStorage.getItem(key);
+        } catch (e) {}
+        var languages = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ""];
+        var prefersZh = false;
+        for (var i = 0; i < languages.length; i++) {
+          if (String(languages[i]).toLowerCase().indexOf("zh") === 0) {
+            prefersZh = true;
+          }
+        }
+        var locale = stored === "zh" || stored === "en" ? stored : prefersZh ? "zh" : "en";
+        document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+        document.title = locale === "zh" ? "OHBE 工作台" : "OHBE Workbench";
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

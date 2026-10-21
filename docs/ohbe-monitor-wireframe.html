@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OHBE 监测页 · 产品线框草案（待 Michael 审阅）</title>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --ink: #1c1b19;
+    --muted: #5c574f;
+    --line: #cfc8b8;
+    --card: #fffdf8;
+    --accent: #0b5fff;
+    --accent-soft: #e8f0ff;
+    --warn: #8a5a00;
+    --warn-bg: #fff4d6;
+    --ok: #0a6b3c;
+    --ok-bg: #e6f6ec;
+    --pane: #f0ebe1;
+    --miss: #b42318;
+    --miss-bg: #fdecea;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: "PingFang SC", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 15px/1.55 var(--sans);
+    color: var(--ink);
+    background: var(--bg);
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 64px; }
+  header.doc {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 18px;
+    margin-bottom: 28px;
+  }
+  header.doc h1 { margin: 0 0 8px; font-size: 1.55rem; letter-spacing: -0.02em; }
+  .meta { color: var(--muted); font-size: 0.92rem; }
+  .meta code { font-family: var(--mono); font-size: 0.85em; background: var(--pane); padding: 1px 6px; border-radius: 4px; }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    background: var(--card);
+  }
+  .pill.draft { background: var(--warn-bg); color: var(--warn); border-color: #e0c57a; }
+  .pill.lock { background: var(--ok-bg); color: var(--ok); border-color: #9ed0b2; }
+  .pill.miss { background: var(--miss-bg); color: var(--miss); border-color: #f0b4ae; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 22px 22px;
+    margin-bottom: 18px;
+  }
+  section h2 {
+    margin: 0 0 6px;
+    font-size: 1.15rem;
+  }
+  section .lead { color: var(--muted); margin: 0 0 16px; }
+  h3 { font-size: 0.98rem; margin: 18px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--pane); font-weight: 600; }
+  .note {
+    background: var(--warn-bg);
+    border: 1px solid #e0c57a;
+    color: var(--warn);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  .oknote {
+    background: var(--ok-bg);
+    border: 1px solid #9ed0b2;
+    color: var(--ok);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  .missnote {
+    background: var(--miss-bg);
+    border: 1px solid #f0b4ae;
+    color: var(--miss);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  ul.tight { margin: 8px 0 0; padding-left: 1.2em; }
+  ul.tight li { margin: 4px 0; }
+  .label-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid #b8ceff;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
+  }
+
+  /* IA diagram */
+  .ia {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+  .ia-nav, .ia-flow {
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    background: #faf7f0;
+    padding: 12px;
+  }
+  .ia-nav .item {
+    padding: 7px 10px;
+    border-radius: 6px;
+    margin: 4px 0;
+    font-size: 0.9rem;
+    border: 1px solid transparent;
+  }
+  .ia-nav .item.group { color: var(--muted); font-size: 0.78rem; text-transform: none; margin-top: 10px; }
+  .ia-nav .item.active {
+    background: var(--accent-soft);
+    border-color: #b8ceff;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .ia-nav .item.dim { color: var(--muted); }
+  .ia-flow ol { margin: 0; padding-left: 1.2em; }
+  .ia-flow li { margin: 6px 0; }
+  .arrow { color: var(--muted); text-align: center; font-size: 0.85rem; margin: 6px 0; }
+
+  /* Wireframe shell */
+  .wf-chrome {
+    border: 1px solid var(--ink);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .wf-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #222;
+    color: #f5f5f5;
+    font-size: 0.82rem;
+  }
+  .wf-body { display: grid; grid-template-columns: 160px 1fr; min-height: 420px; }
+  .wf-side {
+    border-right: 1px solid var(--line);
+    background: #f3f0e8;
+    padding: 10px;
+    font-size: 0.82rem;
+  }
+  .wf-side .nav-item { padding: 6px 8px; border-radius: 5px; margin: 3px 0; }
+  .wf-side .nav-item.on { background: #fff; border: 1px solid var(--line); font-weight: 700; }
+  .wf-main { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .wf-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--pane);
+    font-size: 0.82rem;
+  }
+  .wf-toolbar .btn {
+    border: 1px solid var(--ink);
+    background: #fff;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+  .wf-toolbar .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .wf-toolbar .btn.ghost { opacity: 0.55; }
+  .wf-shell {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 0;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    min-height: 300px;
+    position: relative;
+  }
+  .region {
+    position: relative;
+    padding: 8px;
+    font-size: 0.78rem;
+  }
+  .region::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    background: #fff;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 0 5px;
+    border-radius: 3px;
+    z-index: 1;
+  }
+  .r-dir { border-right: 1px solid var(--ink); background: #eef3ff; }
+  .r-right { display: grid; grid-template-rows: auto 1fr; }
+  .r-rec { border-bottom: 1px solid var(--ink); background: #f7fff5; min-height: 110px; }
+  .r-chat { background: #fff8f0; min-height: 170px; }
+  .r-chat.gap {
+    outline: 2px dashed var(--miss);
+    outline-offset: -4px;
+  }
+  .fake-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    margin: 18px 0 6px;
+  }
+  .fake-row.on { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .fake-mark {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-weight: 700; font-size: 0.75rem;
+  }
+  .param-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px 8px;
+    margin-top: 20px;
+  }
+  .param-grid div {
+    border: 1px dashed var(--line);
+    padding: 3px 5px;
+    border-radius: 4px;
+    background: #fff;
+  }
+  .param-grid dt { color: var(--muted); font-size: 0.68rem; }
+  .param-grid dd { margin: 0; font-family: var(--mono); font-size: 0.72rem; }
+  .chat-bubble {
+    margin: 20px 0 6px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    max-width: 92%;
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+  .chat-bubble.dispatch { border-left: 3px solid var(--accent); }
+  .chat-bubble.result { border-left: 3px solid var(--ok); background: #f3faf5; }
+  .chat-bubble .who { font-size: 0.68rem; color: var(--muted); margin-bottom: 2px; }
+  .chat-composer {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--line);
+  }
+  .chat-composer input {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-size: 0.78rem;
+    background: #fff;
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 0.82rem;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 12px; height: 12px; border: 1px solid var(--ink); border-radius: 2px; }
+  .swatch.a { background: #eef3ff; }
+  .swatch.b { background: #f7fff5; }
+  .swatch.c { background: #fff8f0; }
+  .swatch.d { background: #fff; outline: 2px dashed var(--miss); }
+
+  /* Flow */
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+  @media (max-width: 800px) {
+    .flow { grid-template-columns: 1fr 1fr; }
+    .ia { grid-template-columns: 1fr; }
+    .wf-body { grid-template-columns: 1fr; }
+    .wf-shell { grid-template-columns: 1fr; }
+  }
+  .flow-step {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    background: #faf7f0;
+    font-size: 0.85rem;
+  }
+  .flow-step .n {
+    display: inline-grid; place-items: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--ink); color: #fff; font-size: 0.75rem; font-weight: 700;
+    margin-right: 4px;
+  }
+  .flow-step code { font-family: var(--mono); font-size: 0.78em; }
+  pre.ascii {
+    background: #1c1b19;
+    color: #f0ebe1;
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font: 12px/1.45 var(--mono);
+    margin: 10px 0 0;
+  }
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 700px) { .mode-grid { grid-template-columns: 1fr; } }
+  .mode-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    background: #faf7f0;
+  }
+  .mode-card h4 { margin: 0 0 6px; font-size: 0.95rem; }
+  .mode-card .same { color: var(--ok); font-size: 0.82rem; font-weight: 600; }
+  .q-list { margin: 0; padding-left: 1.2em; }
+  .q-list li { margin: 8px 0; }
+
+  .pill.decided { background: var(--accent-soft); color: var(--accent); border-color: #b8ceff; }
+  .wf-toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+  .wf-toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .wf-toolbar-row.actions { justify-content: flex-end; }
+  .suite-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .suite-toggle .chev { font-size: 0.7rem; color: var(--muted); }
+  .suite-panel {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+  .suite-panel.collapsed .suite-list { display: none; }
+  .suite-panel .suite-hint { color: var(--muted); font-size: 0.75rem; margin: 0; }
+  .suite-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+  .suite-list li {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 5px 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #faf7f0;
+  }
+  .suite-list li.current {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .suite-list li.done { opacity: 0.65; }
+  .suite-list .tid { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; }
+  .suite-list .tmeta { color: var(--muted); font-size: 0.72rem; }
+  .task-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 0.82rem;
+  }
+  .task-bar .switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 10px;
+    background: var(--pane);
+    font-weight: 600;
+  }
+  .task-bar .switch .knob {
+    width: 28px; height: 16px; border-radius: 999px;
+    background: #bbb; position: relative;
+  }
+  .task-bar .switch.on .knob { background: var(--accent); }
+  .task-bar .switch .knob::after {
+    content: "";
+    position: absolute; top: 2px; left: 2px;
+    width: 12px; height: 12px; border-radius: 50%; background: #fff;
+  }
+  .task-bar .switch.on .knob::after { left: 14px; }
+  .decided-list { margin: 0; padding-left: 1.2em; }
+  .decided-list li { margin: 6px 0; }
+  .decided-list s { color: var(--muted); }
+
+  footer {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="doc">
+    <p>
+      <span class="pill decided">v2 · 已批准并落地</span>
+      <span class="pill lock">Dry-run 诚实性不变</span>
+      <span class="pill">实现见 /monitor · docs/monitor.md</span>
+    </p>
+    <h1>OHBE「监测」独立页 · 线框草案 <span class="pill decided">v2 · Michael 反馈已并入</span></h1>
+    <p class="meta">
+      受众：Michael Carol（OHBE） · 日期：2026-10-12（Asia/Shanghai） ·
+      上位：复用 <code>#37 ObservationShell</code> + <code>PlanSession</code> ·
+      目的：编码前确认信息架构与布局 · 修订：套件详情 / 下一任务 / 自动切换扇出
+    </p>
+  </header>
+
+  <!-- 1. IA -->
+  <section id="ia">
+    <h2>1. 页面信息架构 / 导航位置</h2>
+    <p class="lead">
+      「监测」从「评测/方案」编辑流中拆出，成为与评测、报告并列的运行态页面。
+      评测页只负责<strong>既定任务方案</strong>（模式、槽位、套件确认）；监测页只负责<strong>加载已确认方案 → 下发 → 盯窗格执行对话</strong>。
+    </p>
+
+    <div class="ia">
+      <div class="ia-nav" aria-label="侧栏导航提案">
+        <div class="item dim">总览</div>
+        <div class="item group">准备</div>
+        <div class="item dim">　模型池</div>
+        <div class="item dim">　Harness 库</div>
+        <div class="item dim">评测 / 方案</div>
+        <div class="item active">监测 ← 新增</div>
+        <div class="item dim">报告</div>
+        <div class="item dim">联调</div>
+      </div>
+      <div class="ia-flow">
+        <h3 style="margin-top:0">职责切分（提案）</h3>
+        <table>
+          <thead>
+            <tr><th>页面</th><th>做什么</th><th>不做什么</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>评测 / 方案</strong><br/><code>/rounds</code></td>
+              <td>起草 / 确认 PlanSession：模式、对比槽、套件、封存入口</td>
+              <td>不再内嵌完整观察壳作为主路径（可保留只读摘要或「去监测」跳转）</td>
+            </tr>
+            <tr>
+              <td><strong>监测</strong><br/><code>/monitor</code>（名待定）</td>
+              <td>加载<strong>已确认</strong>方案；下发套件任务；多窗格目录 + 参数记录 + <strong>执行对话</strong></td>
+              <td>不改方案结构；不解锁 live spend；不做通用会话库</td>
+            </tr>
+            <tr>
+              <td><strong>报告</strong><br/><code>/results</code></td>
+              <td>封存后的轮次报告 / 五维对比归档</td>
+              <td>不调度任务、不聊天</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="oknote" style="margin-top:12px">
+          入口建议：评测页在套件状态 = <code>confirmed_suite</code> 后展示主按钮「去监测」；
+          监测页顶栏方案选择器只列出已确认 / 运行中 / 已封存方案。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Layout wireframe -->
+  <section id="layout">
+    <h2>2. 监测页布局线框（标注区域）</h2>
+    <p class="lead">
+      壳层复用 #37：左目录 / 右上参数 / 右下过程。增量：右下升级为<strong>执行对话</strong>（过程 + 结果），
+      切任务时自动填充并发送/下发扇出；顶栏含可折叠套件详情与「下一任务 / 自动切换」。
+    </p>
+
+    <div class="wf-chrome">
+      <div class="wf-top">
+        <span>OHBE / 监测</span>
+        <span>Dry-run · spend:none · executed:false</span>
+      </div>
+      <div class="wf-body">
+        <aside class="wf-side">
+          <div class="nav-item">总览</div>
+          <div class="nav-item">评测/方案</div>
+          <div class="nav-item on">监测</div>
+          <div class="nav-item">报告</div>
+        </aside>
+        <div class="wf-main">
+          <!-- toolbar: matches Michael attach (top bar) + suite expand + task advance -->
+          <div class="wf-toolbar">
+            <div class="wf-toolbar-row">
+              <span><span class="label-tag">T0</span>方案</span>
+              <strong>Paired round · plan_ab12</strong>
+              <span class="pill lock">已确认套件</span>
+              <span class="pill">paired_harness</span>
+              <button class="suite-toggle" type="button" title="默认折叠；点击展开任务列表">
+                <span class="chev">▾</span> 套件详情 <span class="muted">10 任务 · 展开示意</span>
+              </button>
+              <span style="flex:1"></span>
+              <button class="btn ghost" type="button">暂停</button>
+              <button class="btn" type="button">推进 Tick</button>
+            </div>
+            <div class="wf-toolbar-row">
+              <button class="btn primary" type="button">下发本轮套件</button>
+              <span class="muted" style="font-size:0.78rem">首轮扇出 · live:false</span>
+            </div>
+            <!-- 方案套件详情：默认折叠 -->
+            <div class="suite-panel" data-label="套件详情（默认折叠；下图=展开示意）">
+              <p class="suite-hint"><strong>默认折叠。</strong>下图为展开态示意：suite 序任务1…任务10；当前任务高亮。点顶栏「套件详情」切换。</p>
+              <ul class="suite-list" aria-label="套件任务列表（展开态示意）">
+                <li class="done"><span class="tid">任务1</span><span>suite.task_01 · 已下发</span><span class="tmeta">done</span></li>
+                <li class="current"><span class="tid">任务2</span><span>suite.task_02 · 当前 · 已填入执行对话并扇出</span><span class="tmeta">current</span></li>
+                <li><span class="tid">任务3</span><span>suite.task_03</span><span class="tmeta">queued</span></li>
+                <li><span class="tid">任务4</span><span>suite.task_04</span><span class="tmeta">queued</span></li>
+                <li><span class="tid">…</span><span>任务5–9 省略示意</span><span class="tmeta">queued</span></li>
+                <li><span class="tid">任务10</span><span>suite.task_10</span><span class="tmeta">queued</span></li>
+              </ul>
+            </div>
+            <!-- 任务推进 -->
+            <div class="task-bar">
+              <span><span class="label-tag">T</span>当前任务 <strong>任务2 / 10</strong> · <code>suite.task_02</code></span>
+              <span style="flex:1"></span>
+              <span class="switch" title="关闭=仅点「下一任务」推进；打开=窗格就绪后自动切下一任务并扇出">
+                <span class="knob"></span> 自动切换任务
+              </span>
+              <button class="btn" type="button">下一任务</button>
+            </div>
+          </div>
+
+          <!-- shell -->
+          <div class="wf-shell" aria-label="监测观察壳">
+            <div class="region r-dir" data-label="A 窗格目录">
+              <strong>窗格目录</strong>
+              <div class="fake-row on">
+                <span class="fake-mark">O</span>
+                <span>
+                  <strong>openbot</strong><br/>
+                  <span style="color:var(--muted)">litellm/… · 受试</span>
+                </span>
+              </div>
+              <div class="fake-row">
+                <span class="fake-mark">I</span>
+                <span>
+                  <strong>inspect_react</strong><br/>
+                  <span style="color:var(--muted)">同模型 · 参照</span>
+                </span>
+              </div>
+              <p style="color:var(--muted);margin:10px 4px 0">点击切换当前窗格窗口<br/>身份 = <code>pane_id</code></p>
+            </div>
+            <div class="r-right">
+              <div class="region r-rec" data-label="B 实时参数记录">
+                <strong>实时参数记录</strong>
+                <div class="param-grid">
+                  <div><dt>阶段</dt><dd>observing</dd></div>
+                  <div><dt>最早 / 最近</dt><dd>10:01 / 10:07</dd></div>
+                  <div><dt>任务</dt><dd>suite.task_02</dd></div>
+                  <div><dt>模型</dt><dd>litellm/…</dd></div>
+                  <div><dt>Harness</dt><dd>openbot</dd></div>
+                  <div><dt>延迟 / 成本</dt><dd>— / —（缺失≠0）</dd></div>
+                </div>
+              </div>
+              <div class="region r-chat gap" data-label="C 执行对话 ★缺口">
+                <strong>执行对话</strong>
+                <span class="pill miss">相对 #37 过程记录的增量</span>
+                <div class="chat-bubble dispatch">
+                  <div class="who">调度 · 切到任务2 → 自动填充并扇出</div>
+                  任务正文已填入对话框，并发送/下发给各 harness 窗格 · live=false
+                </div>
+                <div class="chat-bubble">
+                  <div class="who">过程 · openbot</div>
+                  tool_call / step…（服务端原文保留）
+                </div>
+                <div class="chat-bubble result">
+                  <div class="who">结果 · openbot</div>
+                  焦点任务回放完成 · 未测量全套件（桩诚实标签）
+                </div>
+                <div class="chat-composer">
+                  <input readonly value="【任务2】suite.task_02 正文…（切任务时自动填充）" />
+                  <button class="btn primary" type="button">发送</button>
+                  <button class="btn" type="button">下发</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i class="swatch a"></i> A 目录（harness 或 model）</span>
+      <span><i class="swatch b"></i> B 参数记录（#37 已有）</span>
+      <span><i class="swatch c"></i> C 执行对话（过程+结果，当前缺口）</span>
+      <span><i class="swatch d"></i> 切任务自动填充 + 发送/下发扇出</span>
+    </div>
+
+    <h3>ASCII 结构（便于评审批注）</h3>
+<pre class="ascii">+----------------------------------------------------------------------+
+| 顶栏: T0 方案 Paired round · 已确认套件 · paired_harness              |
+|       [▸ 套件详情]                         [暂停] [推进 Tick]         |
+|       [下发本轮套件]                                                   |
+|       (展开) 任务1…任务10  ← 默认折叠；suite 序；当前高亮            |
+|       当前 任务2/10   [自动切换任务 ○/●]  [下一任务]                  |
++--------+-------------------------------------------------------------+
+| A 目录 | B 实时参数记录 (phase / time / task / model / harness)      |
+| 窗格   |     latency·cost 仅事件有值才填；缺失显示占位               |
+| · H1 * |-------------------------------------------------------------|
+| · H2   | C 执行对话                                                   |
+|        |   [调度] 切任务 → 自动填充正文 → 扇出各 harness             |
+|        |   [过程] ObservationEvent 回合                              |
+|        |   [结果] 本任务结果摘要 / 诚实标签                          |
+|        |   输入框=当前任务正文(自动填)     [发送] [下发]             |
++--------+-------------------------------------------------------------+
+| （可选折叠）五维对比摘要 · 跳转报告                                  |
++----------------------------------------------------------------------+</pre>
+
+    <p class="oknote" style="margin-top:12px">
+      <strong>已拍板（v2）：</strong>切任务（「下一任务」或自动切换）时，该任务内容<strong>自动填充</strong>到执行对话框，
+      并<strong>发送/下发</strong>给各 harness（扇出到全部对比窗格）。顶栏对齐附件：方案 · 已确认套件 · 暂停 · 推进 Tick · 下发本轮套件；
+      另增可折叠套件详情与任务推进条。
+    </p>
+    <p class="missnote" style="margin-top:8px">
+      <strong>相对 #37 仍属草案增量：</strong>右下「执行对话」（过程+结果）与独立监测页编排尚未编码；本文仍为审阅线框，无 PR。
+    </p>
+  </section>
+
+  <!-- 3. Dispatch flow -->
+  <section id="flow">
+    <h2>3. 任务下发流程</h2>
+    <p class="lead">确认方案 → 进入监测 → 下发本轮 →（下一任务 / 自动切换）填充并扇出 → 各窗格执行对话更新。全程 <code>live: false</code>。</p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <p><span class="n">1</span><strong>评测页确认</strong></p>
+        <p>PlanSession 套件 → <code>confirmed_suite</code>。槽位按方案冻结。模式 / 受试 / 参照已定。</p>
+      </div>
+      <div class="flow-step">
+        <p><span class="n">2</span><strong>打开监测</strong></p>
+        <p>加载该 <code>plan_id</code>。目录预告窗格（planned / slot preview）。尚无作业时禁用 Tick。</p>
+      </div>
+      <div class="flow-step">
+        <p><span class="n">3</span><strong>下发本轮</strong></p>
+        <p>显式按钮。复用 <code>POST …/start</code>（live:false）。同一确认套件扇出到本方案全部窗格；打开 Dry-run job。</p>
+      </div>
+      <div class="flow-step">
+        <p><span class="n">4</span><strong>切任务 → 填入 → 扇出</strong></p>
+        <p>「下一任务」或「自动切换任务」：正文填入执行对话并发送/下发给各 harness。C 区追加调度/过程/结果；Tick 揭桩事件。</p>
+      </div>
+    </div>
+
+    <h3>序列（评审用）</h3>
+<pre class="ascii">评测/方案                     监测页                         API（现有）
+────────                     ──────                         ──────────
+确认套件 ──────────────────► 加载 PlanSession
+                             [下发本轮套件] ───────────────► POST /plans/{id}/start
+                                                             live:false
+                             ◄── job + 初始事件
+                             套件详情（默折叠）任务1…10
+                             [下一任务] 或 自动切换
+                               → 对话框填充 task_i 正文
+                               → 发送/下发扇出全部窗格
+                               ├─ pane A 执行对话 += 调度/过程/结果
+                               └─ pane B 执行对话 += 调度/过程/结果
+                             [推进 Tick] ──────────────────► POST /jobs/{id}/tick
+                             … 任务 i+1 …
+                             封存后 ──► 报告页</pre>
+
+    <p class="note">
+      诚实性约束（照抄 #37 / observation-shell.md）：桩过程只回放焦点任务，不假装测完整个套件；
+      缺失延迟/成本显示占位而非 0；横幅保持 <code>spend:none</code> / <code>executed:false</code>。
+    </p>
+  </section>
+
+  <!-- 4. Mode differences -->
+  <section id="modes">
+    <h2>4. paired_harness vs cross_model（同一壳）</h2>
+    <p class="lead">两种模式共用监测壳与下发控件；仅目录行语义与预告来源不同。</p>
+
+    <div class="mode-grid">
+      <div class="mode-card">
+        <h4>P0 · paired_harness（默认）</h4>
+        <p class="same">同一壳 A/B/C</p>
+        <ul class="tight">
+          <li><strong>目录行 = Harness</strong>（受试 + 参照）</li>
+          <li>标题 Harness，副标题共享模型</li>
+          <li><code>pane_id</code> = harness id</li>
+          <li>下发：同一确认套件 → 两个 Harness 窗格</li>
+        </ul>
+      </div>
+      <div class="mode-card">
+        <h4>P1 · cross_model</h4>
+        <p class="same">同一壳 A/B/C</p>
+        <ul class="tight">
+          <li><strong>目录行 = 模型</strong>（固定一个 Harness）</li>
+          <li>标题模型，副标题固定 Harness</li>
+          <li><code>pane_id</code> = model id</li>
+          <li>作业前：行可来自对比槽预览；作业后切 Dry-run 窗格。槽位 id ≠ 窗格 id 时两边都标</li>
+        </ul>
+      </div>
+    </div>
+
+    <table style="margin-top:14px">
+      <thead>
+        <tr><th>维度</th><th>paired_harness</th><th>cross_model</th><th>是否同壳</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>目录主键</td><td>Harness</td><td>Model</td><td>是 · 仅数据源不同</td></tr>
+        <tr><td>参数记录字段</td><td colspan="2">phase / time / task / model / harness / latency·cost 占位</td><td>是</td></tr>
+        <tr><td>执行对话</td><td colspan="2">调度 + 过程 + 结果；英文原文保留</td><td>是</td></tr>
+        <tr><td>下发</td><td colspan="2">显式「下发本轮套件」；任务 one-by-one 扇出</td><td>是</td></tr>
+        <tr><td>对比槽编辑</td><td>不适用主路径</td><td>仍在评测页 ComparisonSlots</td><td>监测页只读</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 5. Decided + remaining questions -->
+  <section id="questions">
+    <h2>5. 已拍板 / 仍待确认</h2>
+    <h3>已拍板（本轮反馈）</h3>
+    <ul class="decided-list">
+      <li><strong>套件可点开：</strong>顶栏「套件详情」展开任务1…任务10（suite 序）；<strong>默认折叠</strong>。</li>
+      <li><strong>任务推进：</strong>提供「下一任务」按钮 + 「自动切换任务」开关/模式。</li>
+      <li><strong>切任务行为：</strong>任务正文自动填充执行对话框，并<strong>发送/下发</strong>扇出到各 harness 窗格（不再把「发送」当作纯备注待定）。</li>
+      <li><strong>顶栏形态：</strong>对齐附件 — 方案 · 已确认套件 · paired_harness · 暂停 · 推进 Tick · 下发本轮套件。</li>
+      <li><strong>壳层：</strong>保持左目录 / 右参数+执行对话；Dry-run 诚实性不变；本稿仍为审阅线框，无代码 PR。</li>
+    </ul>
+    <h3>仍待 Michael 确认</h3>
+    <ol class="q-list">
+      <li>
+        <strong>导航命名与路由：</strong>侧栏用「监测」还是「观察 / 运行」？
+        独立 <code>/monitor</code> 还是 <code>/rounds?view=observe</code>？
+      </li>
+      <li>
+        <strong>评测页是否剥离观察壳：</strong>确认后强制跳转监测，还是评测页保留只读缩略 +「去监测」？
+      </li>
+      <li>
+        <strong>自动切换就绪条件：</strong>「自动切换任务」在何时触发下一题——全部窗格结果到齐、仅受试窗格完成，还是 Tick 阶段推进后？
+        失败窗格是挡住整轮还是标记跳过？
+      </li>
+      <li>
+        <strong>结果块与五维：</strong>执行对话「结果」只展示焦点任务桩摘要，还是挂五维即时切片？
+        完整五维板是否仍只在壳下 / 报告页？
+      </li>
+    </ol>
+  </section>
+
+  <footer>
+    本文档为已批准的产品线框 v2。实现在工作台 <code>/monitor</code>，说明见 <code>docs/monitor.md</code>。不解锁 spend。
+    对齐参考：PR #37《评测页：观察壳…》、<code>docs/observation-shell.md</code>、PlanSession 隔离（#33/#34）。
+    文件：<code>docs/ohbe-monitor-wireframe.html</code> · 修订 v2（2026-10-12 Asia/Shanghai）
+  </footer>
+</div>
+</body>
+</html>

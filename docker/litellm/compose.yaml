@@ -1,0 +1,41 @@
+# Controlled-track LiteLLM topology.
+#
+# The model-calling container is attached only to ohbe_egress, which is an
+# internal network. It can reach the proxy alias ohbe-gateway:4000 and has no
+# route to api.openai.com or api.anthropic.com. The proxy is the process that
+# may use the upstream network. Step D's same-bridge iptables note still
+# applies on hosts whose legacy FORWARD policy is DROP; this file does not
+# insert that rule.
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.104.2
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set the proxy master key}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - ./config.sample.yaml:/app/config.yaml:ro
+    networks:
+      ohbe_egress:
+        aliases:
+          - ohbe-gateway
+      upstream: {}
+
+  model-caller:
+    image: python:3.12-alpine
+    command: ["sleep", "infinity"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - ohbe_egress
+
+networks:
+  ohbe_egress:
+    internal: true
+  upstream: {}

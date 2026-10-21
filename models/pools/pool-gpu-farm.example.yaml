@@ -1,0 +1,28 @@
+# Example GPU-farm model pool. Copy this file and replace every REPLACE_ME id.
+# Gateway URL and API key are read from the environment names below.
+# Do not write a URL, a key, or observed spend in this file.
+# constraints.fail_closed rejects OpenAI and Anthropic hosts, including subdomains.
+schema_version: "0.1"
+kind: ohbe.model_pool
+pool_id: pool-gpu-farm
+gateway:
+  base_url_env: LITELLM_BASE_URL
+  api_key_env: LITELLM_API_KEY
+constraints:
+  fail_closed: true
+  forbid_hosts:
+    - api.openai.com
+    - api.anthropic.com
+models:
+  - model_id: vllm/REPLACE_ME-instruct
+    provider: vllm
+    name: REPLACE_ME-instruct
+    revision: unpinned
+    metadata:
+      litellm_model: hosted_vllm/REPLACE_ME-instruct
+  - model_id: ollama/REPLACE_ME
+    provider: ollama
+    name: REPLACE_ME
+    revision: unpinned
+    metadata:
+      litellm_model: ollama/REPLACE_ME
