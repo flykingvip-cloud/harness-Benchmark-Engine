@@ -634,6 +634,28 @@ tbody tr:hover td {
   gap: 10px;
 }
 
+.advanced {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.advanced summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.advanced .form-grid {
+  margin-top: 8px;
+}
+
+.advanced .muted {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 400;
+}
+
 .seg {
   display: inline-flex;
   gap: 6px;

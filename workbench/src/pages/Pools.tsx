@@ -2,14 +2,16 @@ import { useState } from "react";
 import { ApiError, postJson, routes, type CatalogList, type LibraryActionResult } from "../api";
 import { cloudAddIssues, localAddIssues, localIdentity, localVllmIssues, OSS_MODEL_NAME_CANDIDATES, type PoolProvider } from "../forms";
 import { ErrorBanner, useI18n } from "../i18n/I18nProvider";
-import { ActionNote, TargetFields, useLibraryGate } from "../library";
+import { ActionNote } from "../library";
 import { describeFailure, useLoad } from "../useLoad";
 
 type ModelPanel = "local" | "cloud" | null;
 
+/** Model intake always scans and admits on this machine. Remote SSH discovery is empty. */
+const LOCAL_TARGET = { target: "local" as const, host: "", port: null };
+
 export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useI18n();
-  const gate = useLibraryGate();
   const [panel, setPanel] = useState<ModelPanel>(null);
   const [nonce, setNonce] = useState(0);
   const catalog = useLoad<CatalogList>(`${routes.modelCatalog}?t=${nonce}`);
@@ -28,8 +30,8 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const localIssues = localAddIssues(localDraft);
   const cloudIssues = cloudAddIssues({ ...localDraft, apiKey, gatewayUrl });
   const vllmIssues = provider === "vllm" ? localVllmIssues({ baseUrl: vllmBaseUrl, apiKey: vllmApiKey }) : [];
-  const canScan = gate.ready && localIssues.length === 0 && vllmIssues.length === 0 && pending === null;
-  const canAdmit = gate.ready && cloudIssues.length === 0 && pending === null;
+  const canScan = localIssues.length === 0 && vllmIssues.length === 0 && pending === null;
+  const canAdmit = cloudIssues.length === 0 && pending === null;
 
   function toggle(next: Exclude<ModelPanel, null>) {
     setPanel((current) => (current === next ? null : next));
@@ -48,7 +50,7 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
     try {
       const identity = localIdentity(localDraft);
       const saved = await postJson<LibraryActionResult>(routes.modelLibraryAdmit, {
-        ...gate.body,
+        ...LOCAL_TARGET,
         model_id: identity.model_id,
         provider,
         name,
@@ -81,7 +83,7 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
     try {
       const identity = localIdentity(localDraft);
       const saved = await postJson<LibraryActionResult>(routes.modelLibraryScan, {
-        ...gate.body,
+        ...LOCAL_TARGET,
         provider,
         name,
         revision,
@@ -145,7 +147,6 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
             </button>
           </div>
           <p className="muted">{panel === "cloud" ? t("pools.cloudLead") : t("pools.localLead")}</p>
-          <TargetFields gate={gate} />
           <div className="form-grid">
             <label>
               {t("library.provider")}
@@ -196,8 +197,14 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
                 </label>
               </>
             ) : null}
-            {panel === "local" && provider === "vllm" ? (
-              <>
+          </div>
+          {panel === "local" ? <p className="muted">{t("pools.localNameHint")}</p> : null}
+          <p className="muted">{t("pools.revisionHint")}</p>
+          <p className="muted">{t("pools.fieldHint")}</p>
+          {panel === "local" && provider === "vllm" ? (
+            <details className="advanced" data-testid="pool-advanced">
+              <summary>{t("pools.advanced")}</summary>
+              <div className="form-grid">
                 <label>
                   {t("pools.vllmBaseUrl")}
                   <input
@@ -216,12 +223,10 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
                     onChange={(event) => setVllmApiKey(event.target.value)}
                   />
                 </label>
-              </>
-            ) : null}
-          </div>
-          {panel === "local" ? <p className="muted">{t("pools.localNameHint")}</p> : null}
-          {panel === "local" && provider === "vllm" ? <p className="muted">{t("pools.vllmHint")}</p> : null}
-          <p className="muted">{t("pools.fieldHint")}</p>
+              </div>
+              <p className="muted">{t("pools.vllmHint")}</p>
+            </details>
+          ) : null}
           <div className="row">
             {panel === "cloud" ? (
               <button type="button" disabled={!canAdmit} onClick={() => void admit()}>
