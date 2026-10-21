@@ -493,6 +493,23 @@ function deniedVllmHost(host: string): boolean {
   return VLLM_HOST_SUFFIXES.some((suffix) => name === suffix || name.endsWith(`.${suffix}`));
 }
 
+/** Discovery body. Identity stays omitted so the server lists every passing local row. */
+export function localScanBody(input: { baseUrl: string; apiKey: string }): {
+  target: "local";
+  host: "";
+  port: null;
+  vllm_base_url: string;
+  api_key: string;
+} {
+  return {
+    target: "local",
+    host: "",
+    port: null,
+    vllm_base_url: input.baseUrl.trim(),
+    api_key: input.apiKey,
+  };
+}
+
 /** Optional vLLM listing fields. Empty values stay valid so the server can use env. */
 export function localVllmIssues(input: { baseUrl: string; apiKey: string }): string[] {
   const issues: string[] = [];
