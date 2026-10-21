@@ -44,8 +44,8 @@ inspect = [
 benchmark = "ohbe.cli:cli"
 
 [project.urls]
-Homepage = "https://github.com/upbeyond/OpenBot-Harness-Benchmark-Engine"
-Repository = "https://github.com/upbeyond/OpenBot-Harness-Benchmark-Engine"
+Homepage = "https://github.com/flykingvip-cloud/harness-Benchmark-Engine"
+Repository = "https://github.com/flykingvip-cloud/harness-Benchmark-Engine"
 
 [tool.hatch.version]
 path = "src/ohbe/__init__.py"
