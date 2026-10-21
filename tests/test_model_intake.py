@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import socket
 from collections.abc import Mapping
 from pathlib import Path
@@ -60,9 +61,28 @@ class BoomProbe:
         raise AssertionError(f"probe invoked for {url}")
 
 
-def _client(probe: ScriptedProbe | BoomProbe, *, live: str | None = None) -> TestClient:
+@pytest.fixture
+def intake_root(tmp_path: Path) -> Path:
+    """Pilot checkout whose intake catalog does not include the committed sample.
+
+    Startup hydrates every valid ``models/catalog/*.yaml``. These tests assert
+    the rows they admit, so ``vllm/qwen3`` stays on the real checkout and out
+    of this root. Pricing and the fixture report stay so ``/v1/pools`` works.
+    """
+
+    pricing = tmp_path / "pricing"
+    pricing.mkdir()
+    shutil.copy(ROOT / "pricing" / "ohbe-offline-2026-10-09.yaml", pricing / "ohbe-offline-2026-10-09.yaml")
+    report_dir = tmp_path / "results" / "fixture-pilot"
+    report_dir.mkdir(parents=True)
+    shutil.copy(ROOT / "results" / "fixture-pilot" / "report.json", report_dir / "report.json")
+    (tmp_path / "models" / "catalog").mkdir(parents=True)
+    return tmp_path
+
+
+def _client(root: Path, probe: ScriptedProbe | BoomProbe, *, live: str | None = None) -> TestClient:
     environ = {} if live is None else {"OHBE_ALLOW_LIVE_SPEND": live}
-    return TestClient(create_app(ROOT, environ=environ, probe=probe))
+    return TestClient(create_app(root, environ=environ, probe=probe))
 
 
 def _cloud(client: TestClient, **overrides: object) -> Any:
@@ -115,9 +135,9 @@ def test_schema_rejects_catalog_entry_when_a_gate_failed() -> None:
         )
 
 
-def test_cloud_intake_admits_only_when_health_and_policy_match() -> None:
+def test_cloud_intake_admits_only_when_health_and_policy_match(intake_root: Path) -> None:
     probe = ScriptedProbe(body={"status": "healthy"})
-    client = _client(probe)
+    client = _client(intake_root, probe)
     response = _cloud(client)
     assert response.status_code == 200
     body = response.json()
@@ -143,8 +163,8 @@ def test_cloud_intake_admits_only_when_health_and_policy_match() -> None:
     assert client.get("/v1/pools").json()["pools"][0]["pool_id"] == "pool-pilot"
 
 
-def test_cloud_policy_failure_is_pending_and_does_not_open_a_probe() -> None:
-    client = _client(BoomProbe())
+def test_cloud_policy_failure_is_pending_and_does_not_open_a_probe(intake_root: Path) -> None:
+    client = _client(intake_root, BoomProbe())
     response = _cloud(client, gateway_url="https://sk-live-secret:pw@API.LiteLLM.ai/v1")
     assert response.status_code == 200
     body = response.json()
@@ -174,13 +194,16 @@ def test_cloud_policy_failure_is_pending_and_does_not_open_a_probe() -> None:
     assert completions.json()["reason"] == "gateway_rejected"
 
 
-def test_cloud_connectivity_failure_stays_pending_when_policy_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cloud_connectivity_failure_stays_pending_when_policy_matches(
+    intake_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def blocked(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("socket")
 
     monkeypatch.setattr(socket, "create_connection", blocked)
     probe = ScriptedProbe(error=ProbeError("gateway unreachable"))
-    client = _client(probe)
+    client = _client(intake_root, probe)
     response = _cloud(client)
     body = response.json()
     assert body["accepted"] is False
@@ -192,8 +215,8 @@ def test_cloud_connectivity_failure_stays_pending_when_policy_matches(monkeypatc
     assert client.get("/v1/intake/pending").json()["models"][0]["model_id"] == "openai/gpt-4o"
 
 
-def test_live_flag_does_not_unlock_benchmarking_or_probe() -> None:
-    client = _client(BoomProbe(), live="1")
+def test_live_flag_does_not_unlock_benchmarking_or_probe(intake_root: Path) -> None:
+    client = _client(intake_root, BoomProbe(), live="1")
     response = _cloud(client, live=True)
     assert response.status_code == 403
     assert response.json()["error"] == "live_spend_locked"
@@ -204,9 +227,9 @@ def test_live_flag_does_not_unlock_benchmarking_or_probe() -> None:
     assert client.get("/v1/intake/pending").json()["models"] == []
 
 
-def test_server_scan_lists_local_models_and_handshake_admits_only_policy_matches() -> None:
+def test_server_scan_lists_local_models_and_handshake_admits_only_policy_matches(intake_root: Path) -> None:
     probe = ScriptedProbe(body=LISTING)
-    client = _client(probe)
+    client = _client(intake_root, probe)
     scanned = client.post("/v1/intake/server/scan", json={"gateway_url": f"{GATEWAY}/v1", "probe": "list", "live": False})
     assert scanned.status_code == 200
     body = scanned.json()
@@ -248,8 +271,8 @@ def test_server_scan_lists_local_models_and_handshake_admits_only_policy_matches
     assert client.get("/v1/rounds/comparison-slots").json()["model_ids"] == []
 
 
-def test_server_policy_failure_is_pending_and_blocks_handshake() -> None:
-    client = _client(BoomProbe())
+def test_server_policy_failure_is_pending_and_blocks_handshake(intake_root: Path) -> None:
+    client = _client(intake_root, BoomProbe())
     scanned = client.post(
         "/v1/intake/server/scan",
         json={"gateway_url": "https://api.litellm.ai/v1", "probe": "list", "live": False},
@@ -272,9 +295,9 @@ def test_server_policy_failure_is_pending_and_blocks_handshake() -> None:
     assert client.get("/v1/catalog/models").json()["models"] == []
 
 
-def test_comparison_slots_stay_separate_from_the_catalog() -> None:
+def test_comparison_slots_stay_separate_from_the_catalog(intake_root: Path) -> None:
     probe = ScriptedProbe(body={"status": "healthy"})
-    client = _client(probe)
+    client = _client(intake_root, probe)
     _cloud(client)
     residual = client.get("/v1/rounds/comparison-slots").json()
     assert residual["model_ids"] == []
@@ -293,8 +316,8 @@ def test_comparison_slots_stay_separate_from_the_catalog() -> None:
     assert client.get("/v1/catalog/models").json()["models"][0]["accepted"] is True
 
 
-def test_pending_model_cannot_fill_a_comparison_slot() -> None:
-    client = _client(ScriptedProbe(status=503, body={"error": "down"}))
+def test_pending_model_cannot_fill_a_comparison_slot(intake_root: Path) -> None:
+    client = _client(intake_root, ScriptedProbe(status=503, body={"error": "down"}))
     _cloud(client)
     response = client.post("/v1/rounds/comparison-slots", json={"model_ids": ["openai/gpt-4o"]})
     assert response.status_code == 409
