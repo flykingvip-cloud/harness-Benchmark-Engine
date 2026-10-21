@@ -1,0 +1,31 @@
+# OHBE workbench API. The image serves the fixture catalog only.
+# It does not install LiteLLM or Inspect, and it does not receive a live-spend unlock.
+# Compose may set OHBE_HARNESS_* version pins so plans can whitelist openbot /
+# inspect-react without baking packages into the image.
+
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    OHBE_ROOT=/opt/ohbe \
+    OHBE_ALLOW_LIVE_SPEND=
+
+WORKDIR /opt/ohbe
+
+RUN useradd --system --uid 10001 --home-dir /opt/ohbe --shell /usr/sbin/nologin ohbe
+
+COPY pyproject.toml README.md LICENSE ./
+COPY src ./src
+COPY pricing ./pricing
+COPY results/fixture-pilot ./results/fixture-pilot
+
+RUN pip install --no-cache-dir -e ".[api]" \
+    && chown -R ohbe:ohbe /opt/ohbe
+
+USER ohbe
+
+EXPOSE 8765
+
+# Loopback only. Compose uses the host network; 8765 is for nginx on this machine.
+CMD ["python", "-m", "uvicorn", "ohbe.api.app:app", "--host", "127.0.0.1", "--port", "8765"]

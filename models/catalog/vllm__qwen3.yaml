@@ -1,0 +1,12 @@
+schema_version: "0.1"
+kind: ohbe.model_catalog_entry
+model_id: "vllm/qwen3"
+provider: vllm
+name: "qwen3"
+revision: "vllm-0.23.0"
+litellm_model: "hosted_vllm/qwen3"
+modality: text
+strengths:
+  - reasoning
+placement: gateway
+live_run: rejected

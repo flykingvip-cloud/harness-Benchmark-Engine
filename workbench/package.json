@@ -1,0 +1,25 @@
+{
+  "name": "ohbe-workbench",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "test": "node --experimental-strip-types --test src/i18n/locale.test.ts src/dimensions.test.ts src/chartData.test.ts src/prepare.test.ts src/rounds.test.ts src/planMeta.test.ts src/monitor.test.ts src/forms.test.ts src/slots.test.ts src/results.test.ts"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}

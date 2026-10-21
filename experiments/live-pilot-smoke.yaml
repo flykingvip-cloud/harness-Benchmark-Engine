@@ -1,0 +1,43 @@
+# Live pilot smoke manifest.
+# Topology: private OpenBot host -> OHBE -> LiteLLM on the GPU farm
+# -> local open-source models only.
+# Model ids are REPLACE_ME markers in models/pools/pool-gpu-farm.example.yaml.
+# This file does not contain observed tokens, prices, or success counts.
+# Fixture results stay in results/fixture-pilot/.
+schema_version: "0.1"
+kind: ohbe.live_pilot
+experiment_id: live-pilot-smoke
+name: Live pilot smoke
+seed: 1
+repetitions: 1
+timeout_seconds: 120
+max_total_tokens: 4096
+pricing: pricing/ohbe-offline-2026-10-09.yaml
+model_pool_file: models/pools/pool-gpu-farm.example.yaml
+harnesses:
+  - openbot
+  - inspect_react
+egress:
+  policy_version: ohbe-egress-0.1
+  network: ohbe_egress
+  gateway_host: gpu-litellm
+  gateway_port: 4000
+tasks:
+  - task_id: ohbe-pilot-echo
+    name: pilot-echo
+    version: "1"
+    prompt: Reply with the single word pong.
+    expected:
+      contains: pong
+  - task_id: ohbe-pilot-exact
+    name: pilot-exact
+    version: "1"
+    prompt: Reply with the single word ok.
+    expected:
+      exact: ok
+  - task_id: ohbe-pilot-match
+    name: pilot-match
+    version: "1"
+    prompt: Reply with the single word ready.
+    expected:
+      match: ready

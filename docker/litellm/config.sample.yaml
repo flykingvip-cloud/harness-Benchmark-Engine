@@ -1,0 +1,15 @@
+# LiteLLM OSS proxy config for an OHBE model pool.
+# Image: ghcr.io/berriai/litellm:v1.104.2
+# Do not switch this file to an enterprise image or entrypoint.
+# model_list is the pool allowlist. Virtual keys must repeat these
+# model_name values and must not use "*".
+
+model_list:
+  - model_name: openai/gpt-test
+    litellm_params:
+      model: openai/gpt-test
+      api_key: os.environ/OPENAI_API_KEY
+litellm_settings:
+  drop_params: true
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

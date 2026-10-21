@@ -1,0 +1,57 @@
+# Step D egress topology for the isolation probe.
+# The pinned LiteLLM proxy lives in docker/litellm/compose.yaml.
+#
+# The model-calling container may reach only the gateway on this internal
+# network. It has no route to api.openai.com, api.anthropic.com, or any other
+# external address. Step E replaces the gateway command with a pinned LiteLLM
+# image; this file keeps the mock listener.
+#
+# On hosts whose legacy iptables FORWARD policy is DROP, same-bridge packets
+# are discarded before Docker's internal-network rules matter. The Python
+# runner inserts a same-bridge ACCEPT for the network it creates and leaves
+# external forwarding dropped. Compose alone does not add that rule.
+
+services:
+  gateway:
+    image: python:3.12-alpine
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      OHBE_GATEWAY_PORT: "8080"
+    volumes:
+      - ../src/ohbe/environment/scripts/gateway_mock.py:/opt/ohbe/gateway_mock.py:ro
+    command: ["python", "-u", "/opt/ohbe/gateway_mock.py"]
+    networks:
+      ohbe_egress:
+        aliases:
+          - ohbe-gateway
+
+  model-caller:
+    image: python:3.12-alpine
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - gateway
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      OHBE_GATEWAY_URL: http://ohbe-gateway:8080/health
+    volumes:
+      - ../src/ohbe/environment/scripts/egress_probe.py:/opt/ohbe/egress_probe.py:ro
+    command: ["python", "-u", "/opt/ohbe/egress_probe.py"]
+    networks:
+      - ohbe_egress
+
+networks:
+  ohbe_egress:
+    internal: true

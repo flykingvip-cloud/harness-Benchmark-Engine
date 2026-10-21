@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.python-version
+workbench/node_modules/
+workbench/dist/
+
+# Local click-install trees. Profiles stay in harnesses/profiles.
+harnesses/installs/
+
+# Live pilot artifacts are real runs. Keep the README; ignore everything else.
+results/live/**
+!results/live/README.md
+
+# Local wireframe drafts (do not commit)
+.wireframes/

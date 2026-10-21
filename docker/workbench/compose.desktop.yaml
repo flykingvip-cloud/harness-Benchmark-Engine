@@ -1,0 +1,94 @@
+# Docker Desktop (macOS/Windows): host network does not reach the Mac loopback.
+# Standalone bridge stack with published 127.0.0.1 ports. Live spend stays locked.
+#
+# Prefer `make workbench-desktop-up`: it uses Docker context `desktop-linux`
+# and `up --build --pull never` so Hub IPv6/oauth flakes do not re-pull base
+# images that are already local. Equivalent manual form:
+#   docker --context desktop-linux compose -f docker/workbench/compose.desktop.yaml \
+#     up --build --pull never -d
+#
+# models/ and harnesses/ are bind-mounted RW so catalog admission and harness
+# profiles can persist on the host while the container rootfs stays read-only.
+# Do not put LITELLM_API_KEY (or other secrets) in this file. Pass them at
+# runtime, e.g. LITELLM_API_KEY=... docker compose -f ... up -d
+name: ohbe-workbench
+
+services:
+  api:
+    image: ohbe-workbench-api:local
+    build:
+      context: ../..
+      dockerfile: docker/workbench/Dockerfile.api
+    command:
+      [
+        "python",
+        "-m",
+        "uvicorn",
+        "ohbe.api.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8765",
+      ]
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      OHBE_ROOT: /opt/ohbe
+      PYTHONDONTWRITEBYTECODE: "1"
+      OHBE_ALLOW_LIVE_SPEND: ""
+      # Plans whitelist pins for the fixture live pair. The API image does not
+      # install OpenBot or Inspect; HostHarnessDetector reads these env pins
+      # so openbot/inspect-react enter plans without expanding HARNESS_ORDER
+      # and without unlocking spend. Override at runtime if needed.
+      OHBE_HARNESS_OPENBOT_VERSION: "${OHBE_HARNESS_OPENBOT_VERSION:-fixture}"
+      OHBE_HARNESS_INSPECT_REACT_VERSION: "${OHBE_HARNESS_INSPECT_REACT_VERSION:-0.3.277}"
+      # Remote OpenAI-compatible gateway for model-pool admit / doctor.
+      # API key must come from the process environment, not this file.
+      LITELLM_BASE_URL: "${LITELLM_BASE_URL:-}"
+      LITELLM_API_KEY: "${LITELLM_API_KEY:-}"
+    volumes:
+      - ../../models:/opt/ohbe/models:rw
+      - ../../harnesses:/opt/ohbe/harnesses:rw
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  ui:
+    image: ohbe-workbench-ui:local
+    build:
+      context: ../..
+      dockerfile: docker/workbench/Dockerfile.ui
+    volumes:
+      - ./nginx.desktop.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

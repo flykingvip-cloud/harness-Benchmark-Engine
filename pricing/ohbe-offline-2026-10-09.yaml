@@ -1,0 +1,36 @@
+# OHBE offline price table. Rates are decimal strings.
+# This file is the versioned input to CostEngine. It is not a live provider
+# quote and it is not observed spend.
+#
+# tokens: prompt_per_million and completion_per_million are the provider list
+# price. provider_cost and normalized_cost are that list price.
+#
+# normalized_gpu_seconds: gpu_cost_per_hour is USD per GPU-hour. CostEngine
+# divides by 3600 to get USD per GPU-second. The per-second rate is not stored
+# here. provider_cost is 0 (no provider token invoice). normalized_cost is
+# reported GPU seconds times that per-second rate.
+#
+# rented-placeholder / 3.60 is an offline stand-in so 3.60/3600 is 0.001
+# exactly. Replace gpu_type and gpu_cost_per_hour with the rental you record,
+# then pin the new content hash. Do not treat 3.60 as an invoice.
+pricing_id: ohbe-offline
+version: "2026-10-09"
+currency: USD
+gpus:
+  - gpu_type: rented-placeholder
+    gpu_cost_per_hour: "3.60"
+models:
+  - model_id: openai/gpt-test
+    meter: tokens
+    prompt_per_million: "2.50"
+    completion_per_million: "10.00"
+  - model_id: openai/gpt-test-mini
+    meter: tokens
+    prompt_per_million: "0.15"
+    completion_per_million: "0.60"
+  - model_id: vllm/REPLACE_ME-instruct
+    meter: normalized_gpu_seconds
+    gpu_type: rented-placeholder
+  - model_id: ollama/REPLACE_ME
+    meter: normalized_gpu_seconds
+    gpu_type: rented-placeholder

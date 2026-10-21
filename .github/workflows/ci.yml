@@ -1,0 +1,105 @@
+name: CI
+
+"on":
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package, test extra, and API extra
+        run: python -m pip install -e ".[dev,api]"
+
+      # The live probe's docker run budget includes image pull. Pull first so
+      # a cold runner does not time out inside the test.
+      - name: Pull the egress probe image
+        run: docker pull python:3.12-alpine
+
+      - name: Run pytest
+        run: pytest
+
+  workbench:
+    name: workbench
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: workbench/package-lock.json
+
+      - name: Test and build the workbench
+        working-directory: workbench
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+  egress:
+    name: egress
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package and test extra
+        run: python -m pip install -e ".[dev]"
+
+      - name: Require a Docker daemon
+        run: docker info
+
+      - name: Pull the egress probe image
+        run: docker pull python:3.12-alpine
+
+      - name: Live egress probe must execute and pass
+        env:
+          JUNIT: ${{ runner.temp }}/egress-junit.xml
+        run: |
+          set -euo pipefail
+          pytest tests/test_docker_egress.py::test_docker_blocks_provider_egress_and_allows_gateway \
+            --junitxml="$JUNIT" \
+            -q --tb=short
+          python - <<'PY'
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse(os.environ["JUNIT"]).getroot()
+          suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+          if not suites:
+              sys.exit("junit xml has no testsuite")
+          tests = skipped = failures = errors = 0
+          for suite in suites:
+              tests += int(suite.attrib.get("tests", "0"))
+              skipped += int(suite.attrib.get("skipped", "0"))
+              failures += int(suite.attrib.get("failures", "0"))
+              errors += int(suite.attrib.get("errors", "0"))
+          if tests != 1 or skipped or failures or errors:
+              sys.exit(
+                  "egress probe must be 1 passed and 0 skipped; "
+                  f"got tests={tests} skipped={skipped} failures={failures} errors={errors}"
+              )
+          print("egress probe executed and passed (not skipped)")
+          PY
+          benchmark check-egress
