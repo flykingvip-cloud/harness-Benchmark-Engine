@@ -418,6 +418,25 @@ def configured_vllm_base_url(environ: Mapping[str, str] | None, base_url: str) -
     return raw
 
 
+def listed_revision(body: Mapping[str, Any], name: str) -> str | None:
+    """Concrete revision for ``name`` on an OpenAI-style listing, or None.
+
+    A bare served id is its own revision. ``latest`` and other floating tags
+    are not returned. This does not invent a pin the listing did not provide.
+    """
+
+    if not isinstance(name, str) or not name:
+        return None
+    try:
+        found = parse_vllm_listing(body)
+    except LibraryGateError:
+        return None
+    for item in found:
+        if item.name == name and revision_admitted(item.revision):
+            return item.revision
+    return None
+
+
 def parse_vllm_listing(body: Mapping[str, Any]) -> tuple[DiscoveredModel, ...]:
     """OpenAI-compatible ``/v1/models`` rows that can enter the local library.
 

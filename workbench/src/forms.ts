@@ -536,7 +536,8 @@ export function localVllmIssues(input: { baseUrl: string; apiKey: string }): str
 }
 
 export function cloudAddIssues(draft: CloudAddDraft): string[] {
-  const issues = localAddIssues(draft);
+  const revision = draft.revision === "" ? "from-listing" : draft.revision;
+  const issues = localAddIssues({ ...draft, revision });
   if (draft.apiKey.length < 8 || draft.apiKey.length > 256 || /\s/.test(draft.apiKey) || draft.apiKey.includes("://")) {
     issues.push("api_key");
   }

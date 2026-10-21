@@ -209,6 +209,15 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
                       ))}
                     </ul>
                   )}
+                  {result.missing.length > 0 ? (
+                    <ul className="library-list" data-testid="pool-scan-skipped">
+                      {result.missing.map((modelId) => (
+                        <li key={modelId} className="library-row">
+                          <span>{t("pools.revisionSkipped", { name: modelId })}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
               ) : null}
             </>
@@ -241,10 +250,6 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
                   </datalist>
                 </label>
                 <label>
-                  {t("library.revision")}
-                  <input value={revision} spellCheck={false} onChange={(event) => setRevision(event.target.value)} />
-                </label>
-                <label>
                   {t("pools.apiKey")}
                   <input
                     type="password"
@@ -259,6 +264,15 @@ export function PoolsPage({ embedded = false }: { embedded?: boolean } = {}) {
                   <input value={gatewayUrl} spellCheck={false} onChange={(event) => setGatewayUrl(event.target.value)} />
                 </label>
               </div>
+              <details className="advanced" data-testid="pool-cloud-advanced">
+                <summary>{t("pools.advanced")}</summary>
+                <div className="form-grid">
+                  <label>
+                    {t("library.revision")}
+                    <input value={revision} spellCheck={false} onChange={(event) => setRevision(event.target.value)} />
+                  </label>
+                </div>
+              </details>
               <div className="row">
                 <button type="button" disabled={!canAdmit} onClick={() => void admit()}>
                   {pending === "admit" ? t("library.admitting") : t("library.admit")}

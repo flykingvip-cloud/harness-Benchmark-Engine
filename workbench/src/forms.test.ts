@@ -198,6 +198,8 @@ test("local and cloud add actions require the intake triad", () => {
   const cloud = { ...local, provider: "vllm" as const, name: "lab", apiKey: "sk-intake-secret", gatewayUrl: "http://ohbe-gateway:4000" };
   assert.deepEqual(cloudAddIssues(cloud), []);
   assert.equal(localIdentity(cloud).litellm_model, "hosted_vllm/lab");
+  assert.deepEqual(cloudAddIssues({ ...cloud, revision: "" }), []);
+  assert.ok(cloudAddIssues({ ...cloud, revision: "latest" }).includes("revision"));
   assert.ok(cloudAddIssues({ ...cloud, apiKey: "short" }).includes("api_key"));
   assert.ok(cloudAddIssues({ ...cloud, gatewayUrl: "http://user:pw@ohbe-gateway:4000" }).includes("gateway_url"));
   assert.ok(cloudAddIssues({ ...cloud, gatewayUrl: "" }).includes("gateway_url"));
