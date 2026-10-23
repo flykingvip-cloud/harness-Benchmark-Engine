@@ -830,7 +830,7 @@ host, are section 5.2 of `docs/private-deploy-checklist.md`.
 
 Steps C–J on branch `cursor/ohbe-core-schemas-e7f6` are the v0.1 engine
 scaffolding. Review and merge that branch into `main` through
-[pull request #1](https://github.com/upbeyond/OpenBot-Harness-Benchmark-Engine/pull/1).
+[pull request #1](https://github.com/flykingvip-cloud/harness-Benchmark-Engine/pull/1).
 
 From a checkout of this branch:
 
