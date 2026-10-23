@@ -23,8 +23,8 @@ OHBE 装在私有 OpenBot 主机上，基准流量只去 GPU 机的代理。
 二进制已经在这台机器上，OHBE 只通过 `OPENBOT_BIN` 调用它。
 
 ```bash
-git clone https://github.com/upbeyond/OpenBot-Harness-Benchmark-Engine.git
-cd OpenBot-Harness-Benchmark-Engine
+git clone https://github.com/flykingvip-cloud/harness-Benchmark-Engine.git
+cd harness-Benchmark-Engine
 python3.12 -m venv .venv
 .venv/bin/pip install -e ".[dev,inspect]"
 .venv/bin/pytest
